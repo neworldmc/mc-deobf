@@ -1,6 +1,8 @@
 import org.apache.bcel.classfile.*;
 import org.apache.commons.cli.*;
+import org.apache.commons.io.FileUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -21,6 +23,7 @@ public class Main {
         options.addRequiredOption("m", null, true, "obfuscation mapping file");
         options.addRequiredOption("i", null, true, "input directory");
         options.addRequiredOption("o", null, true, "output directory");
+        options.addOption("c", false, "copy non-class files");
 
         CommandLineParser clp = new DefaultParser();
         try {
@@ -28,12 +31,13 @@ public class Main {
             String mappingFilePath = cl.getOptionValue('m');
             String inputDir = cl.getOptionValue('i');
             String tmp = cl.getOptionValue('o');
-            String outDirRoot;
+            String outDirRoot; // either "" or ends with "/"
             if (!tmp.isEmpty() && tmp.charAt(tmp.length()-1) != '/') {
                 outDirRoot = tmp + "/";
             } else {
                 outDirRoot = tmp;
             }
+            boolean copyNonClassFiles = cl.hasOption('c');
 
             System.err.println("parsing obfuscation mapping...");
             Mapping.Parser mp = new Mapping.Parser(mappingFilePath);
@@ -45,9 +49,11 @@ public class Main {
                 inverseClassNameMap.put(cm.originalName, obfuscatedName);
             });
 
-            System.err.println("building class hierarchy..."); // also builds a list of classes to process
+            // build class hierarchy, build a list of classes to process, and copy non-class files to output directory
+            System.err.println("scanning input directory...");
             Map<String, String[]> hier = new HashMap<>();
             List<JavaClass> classes = new ArrayList<>();
+            Path inputDirPath = Paths.get(inputDir);
             FileVisitor<Path> fv = new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult visitFile(Path path, BasicFileAttributes attrs)
@@ -72,6 +78,11 @@ public class Main {
                                 parents_a[i] = parents.get(i).replace('.', '/');
                             }
                             hier.put(className.replace('.', '/'), parents_a);
+                        }
+                    } else /* non-class file */{
+                        if (copyNonClassFiles) {
+                            Path relativePath = inputDirPath.relativize(path);
+                            FileUtils.copyFile(new File(path.toString()), new File(outDirRoot + relativePath.toString()));
                         }
                     }
                     return FileVisitResult.CONTINUE;
