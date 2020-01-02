@@ -23,6 +23,7 @@ public class Main {
         options.addRequiredOption("m", null, true, "obfuscation mapping file");
         options.addRequiredOption("i", null, true, "input directory");
         options.addRequiredOption("o", null, true, "output directory");
+        options.addOption("s", false, "srg format");
         options.addOption("c", false, "copy non-class files");
 
         CommandLineParser clp = new DefaultParser();
@@ -38,9 +39,15 @@ public class Main {
                 outDirRoot = tmp;
             }
             boolean copyNonClassFiles = cl.hasOption('c');
+            boolean srg = cl.hasOption('s');
 
             System.err.println("parsing obfuscation mapping...");
-            Mapping.Parser mp = new Mapping.Parser(mappingFilePath);
+            MappingParser mp;
+            if (srg) {
+                mp = new SrgMappingParser(mappingFilePath);
+            } else {
+                mp = new ProguardMappingParser(mappingFilePath);
+            }
             Map<String, Remapper.ClassMapping> obfuscatedMappings = convertMappings(mp.parse());
             Map<String, String> classNameMap = new HashMap<>();
             Map<String, String> inverseClassNameMap = new HashMap<>();
@@ -133,7 +140,7 @@ public class Main {
             latch.await();
             long elapsed = System.currentTimeMillis() - startTime;
             System.err.printf("done in %dms\n", elapsed);
-        } catch (ParseException | IOException | Mapping.Parser.SyntaxErrorException | InterruptedException e) {
+        } catch (ParseException | IOException | InvalidInputException | InterruptedException e) {
             System.err.println(e.getMessage());
             System.exit(1);
         }

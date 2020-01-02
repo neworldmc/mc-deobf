@@ -306,8 +306,7 @@ public class Remapper {
                 fieldMap.put(fm.obfuscatedName, fm.originalName);
             }
             for (Mapping.MethodMapping mm : cm.methodMappings) {
-                String sig = Util.encodeMethodType(mm.returnType, mm.argTypes);
-                methodMap.put(new ImmutablePair<>(mm.obfuscatedName, sig), mm.originalName);
+                methodMap.put(new ImmutablePair<>(mm.obfuscatedName, mm.type), mm.originalName);
             }
         }
     }
